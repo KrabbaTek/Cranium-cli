@@ -1,4 +1,5 @@
 defmodule Cranium do
+  # works for development but needs to be changed for production
   @base_url "http://127.0.0.1:3000/api/"
   @fun_facts ["The Swedish parliament is called riksdag and it has 349 members in a single chamber.",
   "Sweden is so long that it's possible for northern parts to have snow on the ground despite the south being in bloom.",
@@ -9,6 +10,9 @@ defmodule Cranium do
   "Around 75% of Finland's surface area is covered with forests, and Finland is home to the world's largest archipelago.",
   "In Helsinki, 11 out of 12 lost wallets are returned to their owners."]
 
+  # /Users/reeceturner/.local/libs
+  @packages_directory "~/.local/libs" |> Path.expand
+
   defp query endpoint do
     uri = @base_url <> endpoint
     case Req.get(uri) do
@@ -17,15 +21,34 @@ defmodule Cranium do
     end
   end
 
-    # no package was provided
+  # ensures a package name is valid
+  defp validate_package_name(package) do
+    cond do
+      # package name contains numbers
+      String.match?(package, ~r/\d/) ->
+        IO.puts "Invalid package name: #{package}. Package names cannot contain numbers."
+
+        # package name contains special characters
+      String.match?(package, ~r/[^\p{L}\s]/) ->
+        IO.puts "Invalid package name: #{package}. Package names cannot contain  special characters"
+
+      # package name is valid
+      true ->
+        :ok
+    end
+  end
+
+  # no package was provided
   def fetch([]) do
     IO.puts "You didn't share a package — what package would you like to install?"
     System.halt
   end
 
   # install a package
-  def fetch _package do
-    body = query("")
+  def fetch package do
+    validate_package_name(package)
+
+    body = query("install/#{package}")
 
     package_name = body["name"]
 
@@ -35,7 +58,14 @@ defmodule Cranium do
 
   # displays the top five packages for today (24 hours)
   def serve_omakase do
-    IO.puts "Serve omakase placeholder"
+    %{
+      "name" => name,
+      "description" => description,
+      "github_url" => github_url
+      } = query("omakase")
+
+    # change the wording of this
+    IO.puts("Omakase package: #{name}, #{description}, #{github_url}")
   end
 
   # displays a random package
@@ -67,12 +97,13 @@ defmodule Cranium do
   end
 
   # delete all packages within a timeframe
-  def delete_packages(timeframe) do
+  def delete_packages(args) do
+    timeframe = Enum.join(args, " ")
+
     verify_timeframe(timeframe)
 
-    IO.puts "Would delete all packages within a timeframe"
+    IO.puts "Would delete all packages within a timeframe: #{timeframe}"
   end
-
 
   # displays a random fun fact
   def provide_fun_fact do
@@ -87,24 +118,43 @@ defmodule Cranium do
   end
 
   # git clone a package (doesn't install)
-  def clone_into project do
-    %{"github_url" => github_url} = query("packages/clone/#{Enum.at(project, 0)}")
+  def clone_into([project | _rest]) do
+    %{"github_url" => github_url} = query("packages/clone/#{project}")
 
     IO.puts "Would clone into #{github_url}"
   end
 
   # displays all packages you have installed
   def your_packages do
+    files = case File.ls(@packages_directory) do
+      {:ok, files} -> files
+      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
+    end
+
+    if length(files) == 0 do
+      IO.puts "You have no packages installed."
+    else
+      IO.puts "All packages:"
+      Enum.each(files, fn file ->
+        IO.puts "#{file}"
+      end)
+    end
   end
 
   def print_upload_message do
-    "You cannot upload libraries through the Cranium CLI. To upload a library, visit the Cranium website."
+    "You cannot upload libraries through the Cranium CLI. To upload a library, please visit the Cranium website."
     |> IO.puts
   end
 
 
 
   def main([command | rest]) do
+    if !File.dir?(@packages_directory) do
+      IO.puts "Something went wrong: you are missing the packages directory: ~/.local/libs/"
+      IO.puts "Try running `mkdir ~/.local/libs`."
+      System.halt
+    end
+
     case command do
       "fetch" -> fetch(rest)
       "omakase" -> serve_omakase()
