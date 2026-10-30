@@ -21,16 +21,16 @@ defmodule Cranium do
     end
   end
 
-  # ensures a package name is valid
+  # ensures a package name is valid (doesn't contain any numbers or special characters)
   defp validate_package_name(package) do
     cond do
       # package name contains numbers
       String.match?(package, ~r/\d/) ->
-        IO.puts "Invalid package name: #{package}. Package names cannot contain numbers."
+        IO.puts "Invalid package name: #{package}; Package names cannot contain numbers."
 
         # package name contains special characters
       String.match?(package, ~r/[^\p{L}\s]/) ->
-        IO.puts "Invalid package name: #{package}. Package names cannot contain  special characters"
+        IO.puts "Invalid package name: #{package}; Package names cannot contain  special characters"
 
       # package name is valid
       true ->
@@ -91,16 +91,102 @@ defmodule Cranium do
     end
   end
 
+  defp parse_timeframe(timeframe) do
+  [_, direction, days] = Regex.run(~r/(older|younger) than (\d+) days/, timeframe)
+  days = String.to_integer(days)
+
+    case direction do
+      "older" -> NaiveDateTime.utc_now() |> NaiveDateTime.add(-days, :day)
+      "younger" -> NaiveDateTime.utc_now() |> NaiveDateTime.add(days, :day)
+    end
+  end
+
   # delete all packages
   def delete_packages([]) do
-    IO.puts "Would delete all packages"
+    # packages = case File.ls(@packages_directory) do
+    #   {:ok, files} -> files
+    #   {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
+    # end
+
+    files = case File.ls(@packages_directory) do
+      {:ok, files} -> files
+      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
+    end
+
+    if length(files) == 0 do
+      IO.puts("There are no files to delete"); System.halt
+    end
+
+    # confirm deletion
+    case IO.gets("Are you sure you want to delete all of your packages? [Y/n]") |> String.trim do
+      "Y" -> :ok
+      _ -> System.halt
+    end
+
+
+    Enum.each(files, fn file ->
+      IO.puts "Would delete #{file}"
+    end)
+  end
+
+  # delete a singular package
+  def delete_packages([name]) do
+    validate_package_name(name)
+
+    path = Path.join(@packages_directory, name)
+
+    # confirm deletion
+    case IO.gets("Are you sure you want to delete #{name}? [Y/n]") |> String.trim do
+      "Y" -> :ok
+      _ -> System.halt
+    end
+
+    # delete only if the directory exists
+    case File.rm_rf(path) do
+      {:ok, []} ->
+        IO.puts "You wanted to delete #{name} but it doesn't exist; you don't have it installed."
+        System.halt(0)
+      {:ok, _} ->
+        :ok
+      {:error, reason, _} ->
+        IO.puts "Failed to delete #{name}: #{reason}"
+        System.halt(1)
+    end
   end
 
   # delete all packages within a timeframe
-  def delete_packages(args) do
-    timeframe = Enum.join(args, " ")
+  def delete_packages(raw_timeframe) do
+    timeframe = Enum.join(raw_timeframe, " ")
+    cutoff = parse_timeframe(timeframe)
 
     verify_timeframe(timeframe)
+
+    all_packages_count = case File.ls(@packages_directory) do
+      {:ok, files} -> files
+      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
+    end |> length
+
+    if all_packages_count == 0 do
+      IO.puts "You don't have any packages installed."; System.halt
+    end
+
+    # find packages that exist within the given timeframe
+    # todo: change this to support older than too
+    found_packages = Path.wildcard(Path.join(@packages_directory, "*"))
+    |> Enum.filter(fn path ->
+      mtime = File.stat!(path).mtime |> NaiveDateTime.from_erl!()
+      NaiveDateTime.compare(mtime, cutoff) == :lt
+    end)
+
+    # no packages exist in the given timeframe
+    if length(found_packages) == 0 do
+      IO.puts "No packages exist within those constraints: #{timeframe}"
+    end
+
+    case IO.gets("This will delete <length of packages> packages. Are you sure? [Y/n]") |> String.trim() do
+      "Y" -> :ok
+      _ -> System.halt
+    end
 
     IO.puts "Would delete all packages within a timeframe: #{timeframe}"
   end
@@ -117,7 +203,7 @@ defmodule Cranium do
     System.halt
   end
 
-  # git clone a package (doesn't install)
+  # git clone a package (doesn't install the package)
   def clone_into([project | _rest]) do
     %{"github_url" => github_url} = query("packages/clone/#{project}")
 
@@ -138,9 +224,14 @@ defmodule Cranium do
       Enum.each(files, fn file ->
         IO.puts "#{file}"
       end)
+
+      IO.puts "\nIn Total, you have #{length(files)} packages."
     end
   end
 
+  # just for clarity, really.
+  # somebody might not be aware of Cranium's conventions and it's best to steer them in the right direction—
+  # instead of just saying "unknown command"
   def print_upload_message do
     "You cannot upload libraries through the Cranium CLI. To upload a library, please visit the Cranium website."
     |> IO.puts
