@@ -49,14 +49,43 @@ defmodule Cranium do
   end
 
   # install a package
-  def fetch package do
+  def fetch([package]) do
     validate_package_name(package)
 
     body = query("install/#{package}")
 
-    package_name = body["name"]
+    case IO.gets("Are you sure you want to install #{package}? [Y/n]") |> String.trim do
+      "Y" -> :ok
+      _ -> System.halt
+    end
 
-    IO.puts "Cranium would install #{package_name}"
+    tarball = body["tarball"]
+
+    download_and_extract(tarball, package)
+
+    IO.puts "Successfully installed #{package}."
+    IO.puts "If you ever want to delete it, run `cranium annihilate #{package}`."
+  end
+
+  defp download_and_extract(url, name) do
+    # download the raw tarball bytes from the server
+    %{body: tarball} = Req.get! url
+
+    # where the package will live after extraction
+    dest = Path.join @packages_directory, name
+
+    # write the tarball to a temp file so tar can read it
+    tmp = Path.join(System.tmp_dir!(), "#{name}.tar.gz")
+    File.write! tmp, tarball
+
+    # create the destination directory if it doesn't exist
+    File.mkdir_p! dest
+
+    # extract the tarball into the destination directory
+    System.cmd("tar", ["-xzf", tmp, "-C", dest])
+
+    # clean up the temp file
+    File.rm! tmp
   end
 
 
