@@ -282,15 +282,32 @@ defmodule Cranium do
     |> IO.puts
   end
 
+  def print_help_message do
+    ""
+    |> IO.puts
+  end
 
 
-  def main([command | rest]) do
-    if !File.dir?(@packages_directory) do
-      IO.puts "Something went wrong: you are missing the packages directory: ~/.local/libs/"
-      IO.puts "Try running `mkdir ~/.local/libs`."
-      System.halt
-    end
+  defp levenshtein(s, t) do
+    s = String.graphemes(s)
+    t = String.graphemes(t)
 
+    distance(s, t)
+  end
+
+  defp distance([], t), do: length(t)
+  defp distance(s, []), do: length(s)
+  defp distance([h | s], [h | t]), do: distance(s, t)
+  defp distance([_ | s] = s_full, [_ | t] = t_full) do
+    1 + Enum.min([
+      distance(s, t_full),      # deletion
+      distance(s_full, t),      # insertion
+      distance(s, t)            # substitution
+    ])
+  end
+
+  # dispatches a command to the corresponding function
+  defp dispatch(command, rest) do
     case command do
       cmd when cmd in ~w[ fetch install retrieve get grab g ] ->
          fetch(rest)
@@ -306,9 +323,50 @@ defmodule Cranium do
         print_upload_message()
       cmd when cmd in ~w[ tear-apart clone ] ->
         clone_into(rest)
+      cmd when cmd in ~w[ help h ] ->
+        print_help_message()
       "fun-fact" -> provide_fun_fact()
       _ ->
+        # there is genuinely zero reason why this would happen
         IO.puts "That's not a recognized command. Type 'help' for a list of the commands."
+      end
+    end
+
+  def main([command | rest]) do
+    if !File.dir?(@packages_directory) do
+      IO.puts "Something went wrong: you are missing the packages directory: ~/.local/libs/"
+      IO.puts "Try running `mkdir ~/.local/libs`."
+      System.halt
+    end
+
+    # I excluded the publish commands because we would infer the command just to tell them it's not a command—
+    # sounds redundant to me.
+    commands = ~w[
+    fetch install retrieve get grab g
+    omakase menu
+    random lottery propose
+    massacre annihilate slaughter remove delete wipe
+    my-packages packages list
+    tear-apart clone
+    ]
+
+    if command in commands do
+      dispatch(command, rest)
+    else
+      # find what command is closest to the user's input
+      closest = Enum.min_by(commands, &levenshtein(&1, command))
+
+      if levenshtein(closest, command) <= 2 do
+        case IO.gets("Unknown command '#{command}'. Did you mean '#{closest}'? [Y/n] ") |> String.trim |> String.downcase do
+          "y" ->
+            # call the closest command
+            dispatch(closest, rest)
+          _ ->
+            System.halt
+        end
+      else
+        IO.puts "That's not a recognized command. Type 'help' for a list of the commands."
+      end
     end
   end
 
