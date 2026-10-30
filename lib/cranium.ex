@@ -16,6 +16,10 @@ defmodule Cranium do
   defp query endpoint do
     uri = @base_url <> endpoint
     case Req.get(uri) do
+      # package not found
+      {:ok, %{status: 404}} ->
+        IO.puts "A package with that name doesn't exist."
+        System.halt 0
       {:ok, response} -> response.body
       {:error, _reason} -> IO.puts "Something went wrong while contacting the server."; System.halt
     end
@@ -64,8 +68,12 @@ defmodule Cranium do
       "github_url" => github_url
       } = query("omakase")
 
-    # change the wording of this
-    IO.puts("Omakase package: #{name}, #{description}, #{github_url}")
+    IO.puts "Here's what's on the menu for today:"
+    IO.puts "Name:\n#{name}\n"
+
+    IO.puts "Description:\n#{description}\n"
+
+    IO.puts "Link to the GitHub repo:\n#{github_url}"
   end
 
   # displays a random package
@@ -96,25 +104,21 @@ defmodule Cranium do
   days = String.to_integer(days)
 
     case direction do
-      "older" -> NaiveDateTime.utc_now() |> NaiveDateTime.add(-days, :day)
-      "younger" -> NaiveDateTime.utc_now() |> NaiveDateTime.add(days, :day)
+      "older" -> NaiveDateTime.utc_now |> NaiveDateTime.add(-days, :day)
+      "younger" -> NaiveDateTime.utc_now |> NaiveDateTime.add(days, :day)
     end
   end
 
   # delete all packages
   def delete_packages([]) do
-    # packages = case File.ls(@packages_directory) do
-    #   {:ok, files} -> files
-    #   {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
-    # end
-
     files = case File.ls(@packages_directory) do
       {:ok, files} -> files
       {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
     end
 
+    # no packages to delete
     if length(files) == 0 do
-      IO.puts("There are no files to delete"); System.halt
+      IO.puts "There are no files to delete."; System.halt
     end
 
     # confirm deletion
@@ -141,7 +145,6 @@ defmodule Cranium do
       _ -> System.halt
     end
 
-    # delete only if the directory exists
     case File.rm_rf(path) do
       {:ok, []} ->
         IO.puts "You wanted to delete #{name} but it doesn't exist; you don't have it installed."
@@ -183,7 +186,7 @@ defmodule Cranium do
       IO.puts "No packages exist within those constraints: #{timeframe}"
     end
 
-    case IO.gets("This will delete <length of packages> packages. Are you sure? [Y/n]") |> String.trim() do
+    case IO.gets("This will delete <length of packages> packages. Are you sure? [Y/n]") |> String.trim do
       "Y" -> :ok
       _ -> System.halt
     end
@@ -207,7 +210,12 @@ defmodule Cranium do
   def clone_into([project | _rest]) do
     %{"github_url" => github_url} = query("packages/clone/#{project}")
 
-    IO.puts "Would clone into #{github_url}"
+    IO.puts "Cloning #{project}."
+
+    case System.cmd("git", ["clone", github_url]) do
+      {_, 0} -> IO.puts "Remember to `cd` into #{project}!"
+      {output, _} -> IO.puts "Failed to clone: #{output}"
+    end
   end
 
   # displays all packages you have installed
