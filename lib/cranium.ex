@@ -166,10 +166,10 @@ defmodule Cranium do
   def delete_packages([name]) do
     validate_package_name(name)
 
-    path = Path.join(@packages_directory, name)
+    path = Path.join @packages_directory, name
 
     # confirm deletion
-    case IO.gets("Are you sure you want to delete #{name}? [Y/n]") |> String.trim do
+    case IO.gets("Are you sure you want to delete #{name}? [Y/n] ") |> String.trim do
       "Y" -> :ok
       _ -> System.halt
     end
@@ -179,7 +179,7 @@ defmodule Cranium do
         IO.puts "You wanted to delete #{name} but it doesn't exist; you don't have it installed."
         System.halt(0)
       {:ok, _} ->
-        :ok
+        IO.puts "Successfully eradicated #{name}."
       {:error, reason, _} ->
         IO.puts "Failed to delete #{name}: #{reason}"
         System.halt(1)
