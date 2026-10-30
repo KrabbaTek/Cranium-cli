@@ -152,7 +152,12 @@ defmodule Cranium do
 
     # confirm deletion
     case IO.gets("Are you sure you want to delete all of your packages? [Y/n]") |> String.trim do
-      "Y" -> :ok
+      "Y" -> case IO.gets("Are you super duper cereal right now?") |> String.trim |> String.downcase do
+        "y" -> :ok
+        "yes" -> :ok
+        "yeah" -> :ok
+        _ -> System.halt
+      end
       _ -> System.halt
     end
 
@@ -189,6 +194,7 @@ defmodule Cranium do
   end
 
   # delete all packages within a timeframe
+  # (WORK IN PROGRESS)
   def delete_packages(raw_timeframe) do
     timeframe = Enum.join(raw_timeframe, " ")
     cutoff = parse_timeframe(timeframe)
@@ -217,7 +223,7 @@ defmodule Cranium do
       IO.puts "No packages exist within those constraints: #{timeframe}"
     end
 
-    case IO.gets("This will delete <length of packages> packages. Are you sure? [Y/n]") |> String.trim do
+    case IO.gets("This will delete #{length(found_packages)} packages. Are you sure? [Y/n]") |> String.trim do
       "Y" -> :ok
       _ -> System.halt
     end
@@ -286,14 +292,21 @@ defmodule Cranium do
     end
 
     case command do
-      "fetch" -> fetch(rest)
-      "omakase" -> serve_omakase()
-      "random" -> pick_random_package()
-      "delete" -> delete_packages(rest)
+      cmd when cmd in ~w[ fetch install retrieve get grab g ] ->
+         fetch(rest)
+      cmd when cmd in ~w[ omakase menu ] ->
+        serve_omakase()
+      cmd when cmd in ~w[ random lottery propose ] ->
+        pick_random_package()
+      cmd when cmd in ~w[ massacre annihilate slaughter remove delete wipe ] ->
+        delete_packages(rest)
+      cmd when cmd in ~w[ my-packages packages list ] ->
+        your_packages()
+      cmd when cmd in ~w[ publish push upload ] ->
+        print_upload_message()
+      cmd when cmd in ~w[ tear-apart clone ] ->
+        clone_into(rest)
       "fun-fact" -> provide_fun_fact()
-      "tear-apart" -> clone_into(rest)
-      "list" -> your_packages()
-      "upload" -> print_upload_message()
       _ ->
         IO.puts "That's not a recognized command. Type 'help' for a list of the commands."
     end
