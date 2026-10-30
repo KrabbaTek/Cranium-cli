@@ -111,7 +111,7 @@ Cranium does not enforce directory structures, but this means you have to be a b
 I don't see this as a problem, since it allows you to be more obvious and aware of what's happening.
 For example, when uploading a library (in the website), you'll have to share a name, description, tarball, and GitHub URL yourself.
 
-I don't blame you if you are grossed out by that, but it saves you from having to write a config file and staining your codebase with Cranium, 
+That process saves you from having to write a config file and staining your codebase with Cranium, 
 which is deeply more important.
 
 I'm a firm believer in the separation of tool and code — this same principle can be seen in [Lieksa](https://github.com/Centurion774477/Lieksa),
