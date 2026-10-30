@@ -142,7 +142,7 @@ defmodule Cranium do
   def delete_packages([]) do
     files = case File.ls(@packages_directory) do
       {:ok, files} -> files
-      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
+      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."; System.halt(1)
     end
 
     # no packages to delete
@@ -158,8 +158,10 @@ defmodule Cranium do
 
 
     Enum.each(files, fn file ->
-      IO.puts "Would delete #{file}"
+       File.rm_rf!(Path.join(@packages_directory, file))
     end)
+
+    IO.puts "Successfully destroyed all installed packages."
   end
 
   # delete a singular package
