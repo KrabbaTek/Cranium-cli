@@ -25,23 +25,6 @@ defmodule Cranium do
     end
   end
 
-  # ensures a package name is valid (doesn't contain any numbers or special characters)
-  defp validate_package_name(package) do
-    cond do
-      # package name contains numbers
-      String.match?(package, ~r/\d/) ->
-        IO.puts "Invalid package name: #{package}; Package names cannot contain numbers."
-
-        # package name contains special characters
-      String.match?(package, ~r/[^\p{L}\s]/) ->
-        IO.puts "Invalid package name: #{package}; Package names cannot contain  special characters"
-
-      # package name is valid
-      true ->
-        :ok
-    end
-  end
-
   # no package was provided
   def fetch([]) do
     IO.puts "You didn't share a package — what package would you like to install?"
@@ -50,8 +33,6 @@ defmodule Cranium do
 
   # install a package
   def fetch([package]) do
-    validate_package_name(package)
-
     body = query("install/#{package}")
 
     case IO.gets("Are you sure you want to install #{package}? [Y/n]") |> String.trim do
@@ -120,7 +101,7 @@ defmodule Cranium do
   # verify the timeframe used in the wipe command.
   # It must follow this syntax:
   defp verify_timeframe(timeframe) do
-    case String.match?(timeframe, ~r/(older|younger) than (\d) days/) do
+    case String.match?(timeframe, ~r/(older|younger) than (\d) day(s)?/) do
       false ->
         IO.puts "Invalid timeframe given: #{timeframe}. It must follow this syntax: older/younger than x days"
         System.halt
@@ -129,14 +110,15 @@ defmodule Cranium do
   end
 
   defp parse_timeframe(timeframe) do
-  [_, direction, days] = Regex.run(~r/(older|younger) than (\d+) days/, timeframe)
+  [_, direction, days] = Regex.run(~r/(older|younger) than (\d+) day(s)?/, timeframe)
   days = String.to_integer(days)
+  cutoff = NaiveDateTime.utc_now() |> NaiveDateTime.add(-days, :day)
 
-    case direction do
-      "older" -> NaiveDateTime.utc_now |> NaiveDateTime.add(-days, :day)
-      "younger" -> NaiveDateTime.utc_now |> NaiveDateTime.add(days, :day)
-    end
+  case direction do
+    "older"   -> {cutoff, :older}
+    "younger" -> {cutoff, :younger}
   end
+end
 
   # delete all packages
   def delete_packages([]) do
@@ -171,8 +153,6 @@ defmodule Cranium do
 
   # delete a singular package
   def delete_packages([name]) do
-    validate_package_name(name)
-
     path = Path.join @packages_directory, name
 
     # confirm deletion
@@ -194,41 +174,66 @@ defmodule Cranium do
   end
 
   # delete all packages within a timeframe
-  # (WORK IN PROGRESS)
   def delete_packages(raw_timeframe) do
     timeframe = Enum.join(raw_timeframe, " ")
-    cutoff = parse_timeframe(timeframe)
 
     verify_timeframe(timeframe)
 
-    all_packages_count = case File.ls(@packages_directory) do
-      {:ok, files} -> files
-      {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
-    end |> length
+    {cutoff, direction} = parse_timeframe(timeframe)
 
-    if all_packages_count == 0 do
-      IO.puts "You don't have any packages installed."; System.halt
+    all_packages =
+      case File.ls(@packages_directory) do
+        {:ok, files} -> files
+        {:error, _reason} ->
+          IO.puts "Failed to read the libs/ directory."
+          System.halt 1
+      end
+
+    if length(all_packages) == 0 do
+      IO.puts("You don't have any packages installed.")
+      System.halt(0)
     end
 
-    # find packages that exist within the given timeframe
-    # todo: change this to support older than too
-    found_packages = Path.wildcard(Path.join(@packages_directory, "*"))
-    |> Enum.filter(fn path ->
-      mtime = File.stat!(path).mtime |> NaiveDateTime.from_erl!()
-      NaiveDateTime.compare(mtime, cutoff) == :lt
-    end)
+    found_packages =
+      Path.wildcard(Path.join(@packages_directory, "*"))
+      |> Enum.filter(fn path ->
+        mtime = File.stat!(path).mtime |> NaiveDateTime.from_erl!()
+        case direction do
+          :older   -> NaiveDateTime.compare(mtime, cutoff) == :lt
+          :younger -> NaiveDateTime.compare(mtime, cutoff) == :gt
+        end
+      end)
 
-    # no packages exist in the given timeframe
     if length(found_packages) == 0 do
       IO.puts "No packages exist within those constraints: #{timeframe}"
+      System.halt 0
     end
 
-    case IO.gets("This will delete #{length(found_packages)} packages. Are you sure? [Y/n]") |> String.trim do
-      "Y" -> :ok
-      _ -> System.halt
+    case IO.gets("This will delete #{length(found_packages)} package(s). Are you sure? [Y/n] — type 's' to list the packages. ")
+        |> String.trim |> String.downcase do
+      "s" ->
+        IO.puts "The following files would be deleted:"
+        Enum.each(found_packages, fn path ->
+          # cleans up the path — remove the trailing /Users/reeceturner/.local/libs
+          IO.puts "#{Path.basename(path)}"
+        end)
+
+        case IO.gets("Do you want to proceed? [Y/n] ") |> String.trim |> String.downcase do
+          "y" -> :ok
+          _ -> System.halt 0
+        end
+      "y" -> :ok
+      _   -> System.halt 0
     end
 
-    IO.puts "Would delete all packages within a timeframe: #{timeframe}"
+    Enum.each(found_packages, fn path ->
+      case File.rm_rf(path) do
+        {:ok, _} -> IO.puts("Deleted: #{path}")
+        {:error, reason, file} -> IO.puts("Failed to delete #{file}: #{reason}")
+      end
+    end)
+
+    IO.puts "Done. #{length(found_packages)} package(s) deleted."
   end
 
   # displays a random fun fact
