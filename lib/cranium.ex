@@ -288,7 +288,7 @@ end
   end
 
   def print_help_message do
-    ""
+    "Help placeholder"
     |> IO.puts
   end
 
