@@ -359,6 +359,7 @@ end
         print_upload_message()
       cmd when cmd in ~w[ tear-apart clone ] ->
         clone_into(rest)
+      cmd when cmd in ~w[ search find lookup query ] -> search_packages(rest)
       cmd when cmd in ~w[ help h ] ->
         print_help_message()
       "fun-fact" -> provide_fun_fact()
