@@ -69,6 +69,37 @@ defmodule Cranium do
     File.rm! tmp
   end
 
+def search_packages([]) do
+  IO.puts "You didn't provide a search term. Please Specify what are you looking for?"
+  System.halt(0)
+end
+
+def search_packages(query_terms) do
+  q = Enum.join(query_terms, " ") |> URI.encode_www_form()
+  endpoint = "packages/search?q=#{q}"
+  case Req.get(@base_url <> endpoint) do
+    {:ok, %{status: 200, body: results}} when is_list(results) ->
+      if Enum.empty?(results) do
+        IO.puts "No packages matched \"#{Enum.join(query_terms, " ")}\"."
+      else
+        IO.puts "Found #{length(results)} package(s):\n"
+        Enum.each(results, fn pkg ->
+          IO.puts "• #{pkg["name"]}"
+          IO.puts "  #{pkg["description"]}"
+          IO.puts "  #{pkg["github_url"]}\n"
+        end)
+      end
+
+    {:ok, %{status: 200, body: %{"results" => results}}} ->
+      search_packages(query_terms) 
+
+    {:ok, %{status: 404}} ->
+      IO.puts "No packages found."
+    {:error, _reason} ->
+      IO.puts "Something went wrong while contacting the server."
+  end
+end
+
 
   # displays the top five packages for today (24 hours)
   def serve_omakase do
