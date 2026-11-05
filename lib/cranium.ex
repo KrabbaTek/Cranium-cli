@@ -319,8 +319,12 @@ end
   end
 
   def print_help_message do
-    ""
-    |> IO.puts
+  """
+  Available commands:
+    search <term>      Search for packages by name or description
+    ...
+  """
+  |> IO.puts()
   end
 
 
@@ -384,6 +388,7 @@ end
     random lottery propose
     massacre annihilate slaughter remove delete wipe
     my-packages packages list
+    search find lookup query  
     tear-apart clone
     ]
 
