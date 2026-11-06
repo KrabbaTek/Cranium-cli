@@ -138,4 +138,6 @@ So, just like the above example, the only times you can't do something is when t
 
 # Ending
 
-This is just the CLI, but Cranium can only truly be enjoyed when you've used the website.
+This is just the CLI, but the idea of Cranium can only truly be enjoyed when you've used the [website](https://github.com/KrabbaTek/Cranium-website) too.
+
+Right now, the website isn't hosted anywhere because we'd be losing money hosting it for nobody to use it, but you can take [Cranium Off the Grid](https://github.com/KrabbaTek/Cranium-off-the-grid) to experience (most) features of Cranium without depending on the main registry.

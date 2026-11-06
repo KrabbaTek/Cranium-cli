@@ -25,6 +25,14 @@ defmodule Cranium do
     end
   end
 
+  # quits the program unless user types "y" or "Y"
+  defp confirm message do
+    case IO.gets(message <> " [Y/n] ") |> String.trim |> String.downcase do
+      "y" -> true
+      _ -> System.halt
+    end
+  end
+
   # no package was provided
   def fetch([]) do
     IO.puts "You didn't share a package — what package would you like to install?"
@@ -35,10 +43,7 @@ defmodule Cranium do
   def fetch([package]) do
     body = query("install/#{package}")
 
-    case IO.gets("Are you sure you want to install #{package}? [Y/n]") |> String.trim do
-      "Y" -> :ok
-      _ -> System.halt
-    end
+    confirm "Are you sure you want to install #{package}?"
 
     tarball = body["tarball"]
 
@@ -155,11 +160,7 @@ end
   def delete_packages([name]) do
     path = Path.join @packages_directory, name
 
-    # confirm deletion
-    case IO.gets("Are you sure you want to delete #{name}? [Y/n] ") |> String.trim do
-      "Y" -> :ok
-      _ -> System.halt
-    end
+    confirm "Are you sure you want to delete #{name}?"
 
     case File.rm_rf(path) do
       {:ok, []} ->
@@ -214,14 +215,11 @@ end
       "s" ->
         IO.puts "The following files would be deleted:"
         Enum.each(found_packages, fn path ->
-          # cleans up the path — remove the trailing /Users/reeceturner/.kscript/libs
+          # cleans up the path — remove the leading /Users/reeceturner/.kscript/libs
           IO.puts "#{Path.basename(path)}"
         end)
 
-        case IO.gets("Do you want to proceed? [Y/n] ") |> String.trim |> String.downcase do
-          "y" -> :ok
-          _ -> System.halt
-        end
+        confirm "Do you want to proceed?"
       "y" -> :ok
       _   -> System.halt
     end
@@ -238,7 +236,7 @@ end
 
   # displays a random fun fact
   def provide_fun_fact do
-    Enum.random(@fun_facts)
+    Enum.random @fun_facts
     |> IO.puts
   end
 
@@ -267,7 +265,7 @@ end
       {:error, _reason} -> IO.puts "Failed to read the libs/ directory."
     end
 
-    if length(files) == 0 do
+    if Enum.empty? files do
       IO.puts "You have no packages installed."
     else
       IO.puts "All packages:"
@@ -280,7 +278,7 @@ end
   end
 
   # just for clarity, really.
-  # somebody might not be aware of Cranium's conventions and it's best to steer them in the right direction—
+  # somebody might not be aware of Cranium's conventions and it's best to steer them in the right direction
   # instead of just saying "unknown command"
   def print_upload_message do
     "You cannot upload libraries through the Cranium CLI. To upload a library, please visit the Cranium website."
@@ -353,6 +351,7 @@ end
     massacre annihilate slaughter remove delete wipe
     my-packages packages list
     tear-apart clone
+    h help
     ]
 
     if command in commands do
