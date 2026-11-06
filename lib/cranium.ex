@@ -10,8 +10,8 @@ defmodule Cranium do
   "Around 75% of Finland's surface area is covered with forests, and Finland is home to the world's largest archipelago.",
   "In Helsinki, 11 out of 12 lost wallets are returned to their owners."]
 
-  # /Users/reeceturner/.local/libs
-  @packages_directory "~/.local/libs" |> Path.expand
+  # /Users/reeceturner/.kscript/libs
+  @packages_directory "~/.kscript/libs" |> Path.expand
 
   defp query endpoint do
     uri = @base_url <> endpoint
