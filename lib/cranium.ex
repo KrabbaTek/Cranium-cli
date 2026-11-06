@@ -91,7 +91,7 @@ def search_packages(query_terms) do
       end
 
     {:ok, %{status: 200, body: %{"results" => results}}} ->
-      search_packages(query_terms) 
+      render_search_results(query_terms, results)
 
     {:ok, %{status: 404}} ->
       IO.puts "No packages found."
