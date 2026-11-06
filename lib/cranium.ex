@@ -68,15 +68,18 @@ defmodule Cranium do
     # clean up the temp file
     File.rm! tmp
   end
-
+@doc """
+Searches packages by name or description.
+It will  matching package names, descriptions, and GitHub URLs.
+"""
 def search_packages([]) do
   IO.puts "You didn't provide a search term. Please Specify what are you looking for?"
   System.halt(0)
 end
 
 def search_packages(query_terms) do
-  q = Enum.join(query_terms, " ") |> URI.encode_www_form()
-  endpoint = "packages/search?q=#{q}"
+  query = Enum.join(query_terms, " ") |> URI.encode()
+  endpoint = "packages/search/#{query}"
   case Req.get(@base_url <> endpoint) do
     {:ok, %{status: 200, body: results}} when is_list(results) ->
       if Enum.empty?(results) do
