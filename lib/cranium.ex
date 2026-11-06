@@ -164,7 +164,7 @@ end
     case File.rm_rf(path) do
       {:ok, []} ->
         IO.puts "You wanted to delete #{name} but it doesn't exist; you don't have it installed."
-        System.halt(0)
+        System.halt
       {:ok, _} ->
         IO.puts "Successfully eradicated #{name}."
       {:error, reason, _} ->
@@ -191,7 +191,7 @@ end
 
     if length(all_packages) == 0 do
       IO.puts("You don't have any packages installed.")
-      System.halt(0)
+      System.halt
     end
 
     found_packages =
@@ -206,7 +206,7 @@ end
 
     if length(found_packages) == 0 do
       IO.puts "No packages exist within those constraints: #{timeframe}"
-      System.halt 0
+      System.halt
     end
 
     case IO.gets("This will delete #{length(found_packages)} package(s). Are you sure? [Y/n] — type 's' to list the packages. ")
@@ -214,16 +214,16 @@ end
       "s" ->
         IO.puts "The following files would be deleted:"
         Enum.each(found_packages, fn path ->
-          # cleans up the path — remove the trailing /Users/reeceturner/.local/libs
+          # cleans up the path — remove the trailing /Users/reeceturner/.kscript/libs
           IO.puts "#{Path.basename(path)}"
         end)
 
         case IO.gets("Do you want to proceed? [Y/n] ") |> String.trim |> String.downcase do
           "y" -> :ok
-          _ -> System.halt 0
+          _ -> System.halt
         end
       "y" -> :ok
-      _   -> System.halt 0
+      _   -> System.halt
     end
 
     Enum.each(found_packages, fn path ->
@@ -339,8 +339,8 @@ end
 
   def main([command | rest]) do
     if !File.dir?(@packages_directory) do
-      IO.puts "Something went wrong: you are missing the packages directory: ~/.local/libs/"
-      IO.puts "Try running `mkdir ~/.local/libs`."
+      IO.puts "Something went wrong: you are missing the packages directory: ~/.kscript/libs/"
+      IO.puts "Try running `mkdir ~/.kscript/libs`."
       System.halt
     end
 
