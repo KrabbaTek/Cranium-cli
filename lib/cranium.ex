@@ -133,15 +133,15 @@ end
     end
 
     # no packages to delete
-    if length(files) == 0 do
+    if Enum.empty? files do
       IO.puts "There are no files to delete."; System.halt
     end
 
     # confirm deletion
     case IO.gets("Are you sure you want to delete all of your packages? [Y/n]") |> String.trim do
       "Y" -> case IO.gets("Are you super duper cereal right now?") |> String.trim |> String.downcase do
-        "y" -> :ok
-        "yes" -> :ok
+        "y"    -> :ok
+        "yes"  -> :ok
         "yeah" -> :ok
         _ -> System.halt
       end
@@ -190,22 +190,22 @@ end
           System.halt 1
       end
 
-    if length(all_packages) == 0 do
-      IO.puts("You don't have any packages installed.")
+    if Enum.empty? all_packages do
+      IO.puts "You don't have any packages installed."
       System.halt
     end
 
     found_packages =
-      Path.wildcard(Path.join(@packages_directory, "*"))
+      Path.wildcard(Path.join @packages_directory, "*")
       |> Enum.filter(fn path ->
-        mtime = File.stat!(path).mtime |> NaiveDateTime.from_erl!()
+        mtime = File.stat!(path).mtime |> NaiveDateTime.from_erl!
         case direction do
           :older   -> NaiveDateTime.compare(mtime, cutoff) == :lt
           :younger -> NaiveDateTime.compare(mtime, cutoff) == :gt
         end
       end)
 
-    if length(found_packages) == 0 do
+    if Enum.empty? found_packages do
       IO.puts "No packages exist within those constraints: #{timeframe}"
       System.halt
     end
@@ -252,8 +252,9 @@ end
 
     IO.puts "Cloning #{project}."
 
+    # safely git clone
     case System.cmd("git", ["clone", github_url]) do
-      {_, 0} -> IO.puts "Remember to `cd` into #{project}!"
+      {_, 0} -> IO.puts "Remember to `cd` into #{project}!" # command runs fine
       {output, _} -> IO.puts "Failed to clone: #{output}"
     end
   end
@@ -275,6 +276,44 @@ end
 
       IO.puts "\nIn Total, you have #{length(files)} packages."
     end
+  end
+
+  # no package was provided
+  def search_for([]) do
+    IO.puts "Please specify a package to search for."; System.halt
+  end
+
+  # search for a package
+  def search_for [package] do
+    matches = query "packages/search/#{package}"
+
+    # IO.puts "Body:"
+
+    # IO.inspect matches
+
+    # this shouldn't ever be true considering the server returns a 404 when no matches are found
+    if Enum.empty? matches do
+      IO.puts "No packages with that name exist"; System.halt
+    end
+
+    if length(matches) > 1 do
+      IO.puts "Found packages:"
+    else
+      IO.puts "Found package:"
+    end
+
+    # print each found package
+    Enum.each(matches, fn match ->
+      %{
+        "name" => name,
+        "description" => description,
+        "github_url" => github_url
+      } = match
+
+      IO.puts name <> "\n\n"
+      IO.puts description <> "\n\n"
+      IO.puts "Check out the project on GitHub:\n\n" <> github_url
+    end)
   end
 
   # just for clarity, really.
@@ -303,9 +342,9 @@ end
   defp distance([h | s], [h | t]), do: distance(s, t)
   defp distance([_ | s] = s_full, [_ | t] = t_full) do
     1 + Enum.min([
-      distance(s, t_full),      # deletion
-      distance(s_full, t),      # insertion
-      distance(s, t)            # substitution
+      distance(s, t_full), # deletion
+      distance(s_full, t), # insertion
+      distance(s, t)       # substitution
     ])
   end
 
@@ -326,6 +365,8 @@ end
         print_upload_message()
       cmd when cmd in ~w[ tear-apart clone ] ->
         clone_into(rest)
+      cmd when cmd in ~w[ find locate search lookup ] ->
+        search_for(rest)
       cmd when cmd in ~w[ help h ] ->
         print_help_message()
       "fun-fact" -> provide_fun_fact()
@@ -351,6 +392,7 @@ end
     massacre annihilate slaughter remove delete wipe
     my-packages packages list
     tear-apart clone
+    find locate search lookup
     h help
     ]
 
