@@ -43,12 +43,33 @@ then
     exit 0
 fi
 
+INSTALL_DIR="$HOME/.local/bin"
+
+# add ~/.local/bin to your path if its not already there
+case ":$PATH:" in
+  *":$INSTALL_DIR:"*) : ;;
+  *)
+    echo "$INSTALL_DIR is not on your PATH." >&2
+    read -p "Would you like to add it to your PATH? [Y/n]" add_to_path
+
+    add_to_path=$(echo "$add_to_path" | tr '[:upper:]' '[:lower:]')
+    if [[ "$add_to_path" == "y" || -z "$add_to_path" ]]
+    then
+        # todo: make this work for Bash too
+        echo 'export PATH="$INSTALL_DIR:$PATH"' >> ~/.zshrc
+
+        echo "Added ~/.local/bin to your PATH."
+    else
+        echo "Add this line to ~/.zshrc:  export PATH=\"$INSTALL_DIR:\$PATH\"" >&2
+    fi
+    ;;
+esac
+
 
 # end guard clauses; begin the actual installation process
 
 
 REPO_URL="https://github.com/KrabbaTek/Cranium-cli"
-INSTALL_DIR="$HOME/.local/bin" # remember to add this to your PATH!
 
 # get the source code
 WORKDIR="$(mktemp -d)"
@@ -68,4 +89,5 @@ cp "cranium" "$INSTALL_DIR/cranium"
 
 echo "Successfully installed Cranium — enjoy!"
 echo "You can find documentation here: https://github.com/KrabbaTek/Cranium-cli/blob/main/README.md"
+echo "The command is: cranium"
 
